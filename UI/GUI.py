@@ -111,7 +111,7 @@ class FileEntry:
             self.container.remove_file_entry(self)
 
 class SettingsFrame(ctk.CTkFrame):
-    '''Frame to hold password entry box, and iterations dropdown.'''
+    """Frame to hold password entry box, and iterations dropdown."""
     def __init__(self, master):
         super().__init__(master)
         self.master_ref = master
@@ -129,15 +129,15 @@ class SettingsFrame(ctk.CTkFrame):
         self.iterations_dropdown.grid(row=1, column=0, columnspan=2, pady=10, padx=10, sticky='ew')
 
     def get_password(self) -> str:
-        '''Returns the user chosen password.'''
+        """Returns the user chosen password."""
         return self.password_entry.get()
     
     def get_iterations(self) -> int:
-        '''Returns the user chosen number of iterations.'''
+        """Returns the user chosen number of iterations."""
         return int(self.iterations_dropdown.get())
 
 class EncryptionFrame(ctk.CTkFrame):
-    '''Frame to hold encryption and decryption buttons.'''
+    """Frame to hold encryption and decryption buttons."""
     def __init__(self, master, encrypt_event, decrypt_event):
         super().__init__(master)
         self.master_ref = master
@@ -185,14 +185,14 @@ class GUI(ctk.CTk):
         self.encryption_frame.grid(row=2, column=0, padx=10, pady=10, sticky='ew')
 
     def get_element_icon(self, name: str):
-        '''
+        """
         Helper function to get icons for UI elements
         Parameters:
             name (str): name of the icon png.
 
         Returns:
             CTkImage: The requested icon as 16x16 CTkImage.
-        '''
+        """
         current_dir = os.path.dirname(os.path.abspath(__file__))
 
         icon_dir = os.path.abspath(os.path.join(current_dir, '..', 'Assets', 'Icons'))
@@ -202,7 +202,7 @@ class GUI(ctk.CTk):
 
 
     def on_encrypt_clicked(self):
-        '''Handles initiation of encryption process.'''
+        """Handles initiation of encryption process."""
         self.encryption_frame.encryption_button.configure(state='disabled')
 
         password   = self.settings_frame.get_password()
@@ -215,7 +215,7 @@ class GUI(ctk.CTk):
         self.encryption_frame.encryption_button.configure(state='normal')
 
     def on_decrypt_clicked(self):
-        '''Handles initiation of decryption process.'''
+        """Handles initiation of decryption process."""
         self.encryption_frame.decryption_button.configure(state='disabled')
 
         password   = self.settings_frame.get_password()
@@ -229,13 +229,13 @@ class GUI(ctk.CTk):
 
 
     def _Message(self, warnings: str):
-            '''Displays any and all warnings to the user.'''
+            """Displays any and all warnings to the user."""
             warnings += '\nPress the Help button for more info.'
             messagebox.showerror(title='Error During Operation', message=warnings)
             self.encryption_frame.decryption_button.configure(state='normal')
 
     def _check_for_encryption_errors(self, password: str) -> bool:
-        '''Checks to make sure all required components are present for encryption.'''
+        """Checks to make sure all required components are present for encryption."""
         warnings = ''
         if not self.files:
             warnings += 'Please select files for encryption.\n'
@@ -247,7 +247,7 @@ class GUI(ctk.CTk):
         return False
     
     def _check_for_decryption_errors(self, password: str) -> bool:
-        '''
+        """
         Checks to make sure all required components are present for decryption.
         
         Parameters:
@@ -256,9 +256,9 @@ class GUI(ctk.CTk):
         Returns:
             boolean: True if errors are present, false if there are none.
         
-        '''
+        """
         def _verify_file_types() -> bool:
-            '''Verifies that all files to be decrypted are encrypted.'''
+            """Verifies that all files to be decrypted are encrypted."""
             all_encrypted = True
             for file in self.files:
                 file_ext = os.path.splitext(file)[1]
@@ -280,7 +280,7 @@ class GUI(ctk.CTk):
         return False
 
     def _run_crypto_loop(self, mode: str, password: str, iterations: int) -> None:
-        '''
+        """
         Helper function that makes calls to encrypt and decrypt files.
         
         Parameters:
@@ -288,7 +288,7 @@ class GUI(ctk.CTk):
             password   (str): Password to use when deriving key used in cipher.
             iterations (int): Number of iterations for key generation.
         
-        '''
+        """
         max_workers = min(8, os.cpu_count() or 4)
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
 
@@ -304,17 +304,17 @@ class GUI(ctk.CTk):
         self._poll_progress()
 
     def _encrypt_task(self, crypto: CryptoManager.CryptoManager, file_path: str, password: str, iterations: int) -> None:
-        '''Worker task for encrypting files.'''
+        """Worker task for encrypting files."""
         crypto.encrypt(file_path, password, iterations, self.output_directory)
 
     def _decrypt_task(self, crypto: CryptoManager.CryptoManager, file_path: str, password: str) -> None:
-        '''
+        """
         Worker task for decrypting files.
         Parameters:
             crypto (CryptoManager): The CryptoManager to execute the decryption.
             file_path        (str): Path to the file to be decrypted
             password         (str): Password to use when deriving key used in cipher.
-        '''
+        """
         try:
             crypto.decrypt(file_path, password, self.output_directory)
         except ValueError:
@@ -328,7 +328,7 @@ class GUI(ctk.CTk):
             entry.progress_bar.configure(progress_color='red')
 
     def _poll_progress(self) -> None:
-        '''Helper function to update progress bars for each file currently being worked on'''
+        """Helper function to update progress bars for each file currently being worked on"""
         all_done = True
         for file_path in self.files:
             entry = self.file_frame.entry_dict.get(file_path)
