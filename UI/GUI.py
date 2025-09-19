@@ -66,6 +66,7 @@ class GUI(ctk.CTk):
         iterations = self.settings_frame.get_iterations()
 
         if self._check_for_encryption_errors(password):
+            self.encryption_frame.encryption_button.configure(state='normal')
             return
 
         self._run_crypto_loop('encrypt', password, iterations)
@@ -79,6 +80,7 @@ class GUI(ctk.CTk):
         iterations = self.settings_frame.get_iterations()
 
         if self._check_for_decryption_errors(password):
+            self.encryption_frame.decryption_button.configure(state='normal')
             return
 
         self._run_crypto_loop('decrypt', password, iterations)
