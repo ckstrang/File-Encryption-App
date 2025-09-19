@@ -1,9 +1,12 @@
-from Crypto.Random import get_random_bytes
-from Crypto.Protocol.KDF import PBKDF2
-from Crypto.Cipher import AES
-from time import sleep
-import struct
 import os
+import struct
+from time import sleep
+
+from Crypto.Cipher import AES
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Random import get_random_bytes
+
+
 class CryptoManager:
     """
     Handles encryption and decryption of files using AES-GCM.
@@ -51,7 +54,7 @@ class CryptoManager:
         return PBKDF2(password, salt, dkLen=self.key_length, count=iterations)
     
     def get_progress(self) -> float:
-        """Returns the progress (float) of the current crpyto operation"""
+        """Returns the progress (float) of the current crypto operation"""
         return self.progress
 
 
@@ -97,7 +100,7 @@ class CryptoManager:
         with open(input_path, 'rb') as input_file:
             salt:  bytes = input_file.read(32)
             nonce: bytes = input_file.read(12)
-            iterations = struct.unpack('>I', input_file.read(4))[0]
+            iterations = int.from_bytes(input_file.read(4), byteorder='big', signed=False)
             self.ext_len = int.from_bytes(input_file.read(1), 'big')
             file_ext = input_file.read(self.ext_len).decode('utf-8')
             check_ext = file_ext if file_ext.startswith('.') else '.' + file_ext
@@ -120,7 +123,7 @@ class CryptoManager:
     
     def _parse_files(self, mode: str, cipher, input_path: str, output_path: str, salt: bytes, nonce: bytes, iterations: int) -> None:
         """
-        Peforms the reading and writing process of the encryption. 
+        Peforms the reading and writing process of the encryption or decryption. 
         Parses the input file in self.buffer_size chunks, encrypting or decrypting them, and writing the result to an output file.
 
         Parameters:
@@ -138,7 +141,7 @@ class CryptoManager:
             if mode == 'encrypt':
                 output_file.write(salt)
                 output_file.write(nonce)
-                output_file.write(struct.pack('>I', iterations))
+                output_file.write(iterations.to_bytes(4, byteorder="big", signed=False))
                 
                 file_ext = os.path.splitext(input_path)[1].encode('utf-8')
                 ext_len = len(file_ext).to_bytes(1, 'big')
