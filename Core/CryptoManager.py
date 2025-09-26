@@ -62,7 +62,7 @@ class CryptoManager:
         Constructs an output filename for a decrypted file.
         
         Strips the ".encrypted" from the input filename, appends "_decrypted" and adds the file_ext.
-        If no output_dir is empty, the output path is next to the input path.
+        If output_dir is empty, the output path is next to the input path.
 
         Parameters:
             input_path (str): Path to the file to be encrypted.
