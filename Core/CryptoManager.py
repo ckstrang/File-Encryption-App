@@ -44,7 +44,7 @@ class CryptoManager:
         
         Parameters:
             password   (str): User password for key generation.
-            salt       (str): Salt used for key generation.
+            salt       (bytes): Random salt used for key generation.
             iterations (int): Number of iterations for key generation.
 
         Returns:
@@ -56,8 +56,35 @@ class CryptoManager:
     def get_progress(self) -> float:
         """Returns the progress (float) of the current crypto operation"""
         return self.progress
+    
+    def _construct_file_name(self, input_path: str, output_dir: str, file_ext: str) -> str:
+        """
+        Constructs an output filename for a decrypted file.
+        
+        Strips the ".encrypted" from the input filename, appends "_decrypted" and adds the file_ext.
+        If no output_dir is empty, the output path is next to the input path.
 
+        Parameters:
+            input_path (str): Path to the file to be encrypted.
+            output_dir (str): Directory where encrypted files will be saved. If empty, writes next to input file.
+            file_ext   (str): The input file extension.
+        
+        Returns:
+            output_path (str): The output path of decrypted file.
+            
+        """
+        base_name = os.path.basename(input_path)
+        base_name = base_name[:-10] # Strip .encrypted
 
+        if output_dir != '':
+            output_path = os.path.join(output_dir, base_name)
+        else:
+            output_path = os.path.join(os.path.dirname(input_path), base_name)
+        
+        name = os.path.splitext(output_path)[0]
+        output_path = name + "_decrypted" + file_ext
+
+        return output_path
     
     def encrypt(self, input_path: str, password: str, iterations: int, output_dir: str) -> None:
         """
@@ -66,6 +93,8 @@ class CryptoManager:
         Parameters:
             input_path (str): Path to the file to be encrypted.
             password   (str): Password to use when deriving key used in cipher.
+            iterations (int): Number of iterations for key generation.
+            output_dir (str): Directory where encrypted files will be saved. If empty, writes next to input file.
 
         Returns:
             None
@@ -78,7 +107,7 @@ class CryptoManager:
         cipher = AES.new(key, AES.MODE_GCM, nonce)
 
         if output_dir != '':
-            output_path: str = output_dir + '/' + os.path.basename(input_path) + '.encrypted'
+            output_path = output_dir + '/' + os.path.basename(input_path) + '.encrypted'
         else:
             output_path = input_path + '.encrypted'
 
@@ -87,15 +116,16 @@ class CryptoManager:
 
     def decrypt(self, input_path, password: str, output_dir: str) -> None:
         """
-        Decrypts a file using AES GCM.
+        Extracts metadata and decrypts a file using AES GCM.
 
         Parameters:
             input_path (str): Path to the file to be decrypted.
             password   (str): Password to use when deriving key used in cipher.
-            output_dir (str): Path to where the output file should be written.
+            output_dir (str): Directory where decrypted files will be saved. If empty, writes next to input file.
 
         Returns:
             None          
+        
         """
         with open(input_path, 'rb') as input_file:
             salt:  bytes = input_file.read(32)
@@ -103,17 +133,7 @@ class CryptoManager:
             iterations = int.from_bytes(input_file.read(4), byteorder='big', signed=False)
             self.ext_len = int.from_bytes(input_file.read(1), 'big')
             file_ext = input_file.read(self.ext_len).decode('utf-8')
-            check_ext = file_ext if file_ext.startswith('.') else '.' + file_ext
-            if not input_path.lower().endswith(check_ext.lower()):
-                if output_dir != '':
-                    output_path = output_dir + '/' +  os.path.basename(input_path.replace('.encrypted', '')) + '_decrypted' + file_ext
-                else:
-                    output_path = input_path.replace('.encrypted', '_decrypted') + file_ext
-            else:
-                if output_dir != '':
-                    output_path = output_dir + '/' + os.path.basename(input_path.replace('.encrypted', '_decrypted'))
-                else:
-                    output_path = input_path.replace('.encrypted', '_decrypted') + file_ext
+            output_path = self._construct_file_name(input_path, output_dir, file_ext)
 
         key: bytes = self._derive_key(password, salt, iterations)   
         cipher = AES.new(key, AES.MODE_GCM, nonce)
@@ -135,27 +155,35 @@ class CryptoManager:
 
         Returns:
             None
-
+        
         """
         with open(input_path, 'rb') as input_file, open(output_path, 'wb') as output_file:
             if mode == 'encrypt':
+                # Write metadata
                 output_file.write(salt)
                 output_file.write(nonce)
                 output_file.write(iterations.to_bytes(4, byteorder="big", signed=False))
-                
+
                 file_ext = os.path.splitext(input_path)[1].encode('utf-8')
                 ext_len = len(file_ext).to_bytes(1, 'big')
                 output_file.write(ext_len)
                 output_file.write(file_ext)
 
+            # Seek end of file and determine file_size
             input_file.seek(0, 2)
             total_size = input_file.tell()
+
+            # Seek start of file data
             if mode == 'encrypt':
                 input_file.seek(0, 0)
             if mode == 'decrypt': 
+                # Subtract metadata to determine file size
+                # 4 is the number of iterations in bytes
+                # 1 is the extension length in bytes
                 total_size = total_size - self.salt_length - self.nonce_length - self.tag_size - 4 - 1 - self.ext_len
                 input_file.seek(self.salt_length + self.nonce_length + 4 + 1 + self.ext_len)
 
+            # Actual bytes parsing
             total_read = 0
             while True:
                 to_read = min(self.buffer_size, total_size - total_read) if mode == 'decrypt' else self.buffer_size
@@ -168,12 +196,12 @@ class CryptoManager:
                     output_file.write(cipher.decrypt(chunk))
                 total_read += len(chunk)
                 self.progress = total_read / total_size
-                sleep(0.01)
 
             if mode == 'encrypt':
+                # Write tag
                 tag = cipher.digest()
                 output_file.write(tag)
             elif mode == 'decrypt':
+                # Verify tag
                 tag = input_file.read(self.tag_size)
                 cipher.verify(tag)
-                print('decryption successful.')
