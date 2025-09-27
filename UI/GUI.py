@@ -80,26 +80,35 @@ class GUI(ctk.CTk):
         iterations = self.settings_frame.get_iterations()
 
         if self._check_for_decryption_errors(password):
-            self.encryption_frame.decryption_button.configure(state='normal')
             return
 
         self._run_crypto_loop('decrypt', password, iterations)
-        self.encryption_frame.decryption_button.configure(state='normal')
 
 
     def _Message(self, warnings: str):
             """Displays any and all warnings to the user."""
             warnings += '\nPress the Help button for more info.'
             messagebox.showerror(title='Error During Operation', message=warnings)
+            self.encryption_frame.encryption_button.configure(state='normal')
             self.encryption_frame.decryption_button.configure(state='normal')
 
     def _check_for_encryption_errors(self, password: str) -> bool:
         """Checks to make sure all required components are present for encryption."""
+        def _verify_file_types() -> bool:
+            """Verifies that all files to be encrypted aren't already encrypted."""
+            for file in self.files:
+                file_ext = os.path.splitext(file)[1]
+                if file_ext == '.encrypted':
+                    return False
+            return True
+        
         warnings = ''
         if not self.files:
             warnings += 'Please select files for encryption.\n'
         if not password:
             warnings += 'Please input a password to be used for encryption.\nDo not forget this password, you will need it for decryption.\n'
+        if not _verify_file_types():
+            warnings += 'Please do not encrypt already encrypted files.'
         if len(warnings) > 0:
             self._Message(warnings)
             return True
@@ -118,12 +127,11 @@ class GUI(ctk.CTk):
         """
         def _verify_file_types() -> bool:
             """Verifies that all files to be decrypted are encrypted."""
-            all_encrypted = True
             for file in self.files:
                 file_ext = os.path.splitext(file)[1]
                 if file_ext != '.encrypted':
-                    all_encrypted = False
-            return all_encrypted
+                    return False
+            return True
         
         warnings = ''
         if not self.files:
@@ -200,7 +208,10 @@ class GUI(ctk.CTk):
                 if progress < 1.0:
                     all_done = False
                 else:
+                    # Operation complete
                     entry.button.configure(image=self.get_element_icon('Done.png'))
                     entry.progress_bar.configure(progress_color='green')
+                    self.executor.shutdown()
+                    self.encryption_frame.decryption_button.configure(state='normal')
         if not all_done:
             self.after(100, self._poll_progress)

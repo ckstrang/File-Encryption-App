@@ -1,5 +1,6 @@
 import customtkinter as ctk
 
+
 class HelpWindow(ctk.CTkToplevel):
     def __init__(self, master):
         super().__init__(master)
@@ -33,6 +34,9 @@ class HelpWindow(ctk.CTkToplevel):
             '   -More iterations = better encryption, takes longer\n'
             '   -Less iterations = weaker encryption, faster\n'
             '5. The progress bars show the progress for each file\n'
+            '\n'
+            'Note: \n'
+            'Encryption of already encrypted files is not supported.'
         )
 
         label = ctk.CTkLabel(instructions_frame, text=instructions, justify='left', anchor='nw', wraplength=500)
